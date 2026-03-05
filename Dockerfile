@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install frontend dependencies (this allows for better layer caching)
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the frontend source
 COPY . .
@@ -20,7 +20,7 @@ WORKDIR /app
 
 # Copy server package files and install production dependencies
 COPY server/package*.json ./server/
-RUN cd server && npm ci
+RUN cd server && npm install
 
 # Copy server source code
 COPY server/ ./server/
