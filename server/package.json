@@ -1,0 +1,29 @@
+{
+    "name": "sales-report-backend",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "start": "node --loader ts-node/esm index.ts",
+        "dev": "nodemon --exec \"node --loader ts-node/esm\" index.ts",
+        "setup-db": "node --loader ts-node/esm setup-db.ts"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.2",
+        "multer": "^1.4.5-lts.1",
+        "papaparse": "^5.5.3",
+        "pg": "^8.13.3",
+        "xlsx": "^0.18.5"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "@types/multer": "^1.4.12",
+        "@types/papaparse": "^5.5.6",
+        "@types/pg": "^8.11.11",
+        "nodemon": "^3.1.9",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.3"
+    }
+}
