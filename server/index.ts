@@ -503,12 +503,12 @@ if (activeDistPath) {
   app.use(express.static(activeDistPath));
 
   // Handle React Router fallback (Redirects back to index.html for CSR)
-  app.get('*', (req, res) => {
+  app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(activeDistPath!, 'index.html'));
   });
 } else {
   // Catch-all if frontend isn't built yet
-  app.get('*', (req, res) => {
+  app.get(/(.*)/, (req, res) => {
     res.status(404).send('Frontend not built. Run "npm run build" to generate the UI.');
   });
 }
