@@ -89,13 +89,18 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/95 backdrop-blur-sm px-4 lg:px-6">
-          <button
-            className="lg:hidden rounded-lg p-2 hover:bg-secondary transition-colors"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+        <header className="sticky top-0 z-30 flex flex-col md:flex-row md:items-center gap-4 border-b border-border bg-background/95 backdrop-blur-sm p-4 lg:px-6 min-h-[64px]">
+          <div className="flex items-center justify-between w-full md:w-auto">
+            <div className="flex items-center gap-3">
+              <button
+                className="lg:hidden rounded-lg p-2 -ml-2 hover:bg-secondary transition-colors"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <span className="font-semibold lg:hidden">Dashboard</span>
+            </div>
+          </div>
           <DashboardFilters />
         </header>
 

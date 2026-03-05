@@ -23,9 +23,9 @@ export function DashboardFilters() {
   };
 
   return (
-    <div className="flex flex-1 items-center gap-2 flex-wrap">
+    <div className="flex flex-1 items-center gap-2 flex-wrap w-full md:w-auto">
       {/* Search */}
-      <div className="relative w-full max-w-[220px]">
+      <div className="relative w-full sm:w-auto sm:max-w-[220px] flex-1 min-w-[150px]">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           placeholder="Search products..."
@@ -60,7 +60,7 @@ export function DashboardFilters() {
 
       {/* Site */}
       <Select value={filters.site || "all"} onValueChange={v => updateFilter("site", v)}>
-        <SelectTrigger className="h-9 w-[160px] text-sm border-0 bg-secondary/50">
+        <SelectTrigger className="h-9 w-[140px] flex-1 sm:flex-none text-sm border-0 bg-secondary/50 shrink-0">
           <SelectValue placeholder="Site" />
         </SelectTrigger>
         <SelectContent>
@@ -71,7 +71,7 @@ export function DashboardFilters() {
 
       {/* Category */}
       <Select value={filters.category || "all"} onValueChange={v => updateFilter("category", v === "all" ? "" : v)}>
-        <SelectTrigger className="h-9 w-[160px] text-sm border-0 bg-secondary/50">
+        <SelectTrigger className="h-9 w-[140px] flex-1 sm:flex-none text-sm border-0 bg-secondary/50 shrink-0">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent>
@@ -82,7 +82,7 @@ export function DashboardFilters() {
 
       {/* Department */}
       <Select value={filters.department || "all"} onValueChange={v => updateFilter("department", v === "all" ? "" : v)}>
-        <SelectTrigger className="h-9 w-[150px] text-sm border-0 bg-secondary/50">
+        <SelectTrigger className="h-9 w-[140px] flex-1 sm:flex-none text-sm border-0 bg-secondary/50 shrink-0">
           <SelectValue placeholder="Department" />
         </SelectTrigger>
         <SelectContent>
