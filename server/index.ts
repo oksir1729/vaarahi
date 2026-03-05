@@ -513,6 +513,19 @@ if (activeDistPath) {
   });
 }
 
+// Ensure Database tables exist before starting
+try {
+  const schemaPath = path.join(__dirname, 'schema.sql');
+  if (fs.existsSync(schemaPath)) {
+    console.log('Validating database schema...');
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    await pool.query(schema);
+    console.log('Database tables verified.');
+  }
+} catch (err) {
+  console.error('Failed to initialize database tables:', err);
+}
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
