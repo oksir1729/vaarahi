@@ -103,31 +103,33 @@ export default function SalesmenPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight text-foreground">Salesman Performance</h2>
                     <p className="text-sm text-muted-foreground mt-1">Analyze revenue and quantity sold by each salesman</p>
                 </div>
-                <MetricToggle options={metricOptions} value={metric} onChange={v => setMetric(v as "revenue" | "quantity")} />
+                <div className="self-start sm:self-auto">
+                    <MetricToggle options={metricOptions} value={metric} onChange={v => setMetric(v as "revenue" | "quantity")} />
+                </div>
             </div>
 
             <div className="grid gap-6">
 
                 {/* Performance Time Series Graph */}
                 <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
-                    <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <CardHeader className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <CardTitle>Salesman Rankings</CardTitle>
                             <CardDescription>Detailed metrics for all salesmen</CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search by name or code..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-8 h-9 w-[200px] md:w-[250px]"
+                                    className="pl-8 h-9 w-full sm:w-[250px]"
                                 />
                             </div>
                             <Button
@@ -197,10 +199,10 @@ export default function SalesmenPage() {
                         </CardDescription>
                     </div>
                     {selectedSmCode && (
-                        <div className="flex bg-muted/50 p-1 rounded-lg">
-                            <button onClick={() => setTimeframe("daily")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${timeframe === "daily" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Daily</button>
-                            <button onClick={() => setTimeframe("monthly")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${timeframe === "monthly" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Monthly</button>
-                            <button onClick={() => setTimeframe("yearly")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${timeframe === "yearly" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Yearly</button>
+                        <div className="flex flex-wrap bg-muted/50 p-1 rounded-lg gap-1">
+                            <button onClick={() => setTimeframe("daily")} className={`flex-1 px-3 py-1.5 sm:py-1 text-xs font-medium rounded-md transition-colors ${timeframe === "daily" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Daily</button>
+                            <button onClick={() => setTimeframe("monthly")} className={`flex-1 px-3 py-1.5 sm:py-1 text-xs font-medium rounded-md transition-colors ${timeframe === "monthly" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Monthly</button>
+                            <button onClick={() => setTimeframe("yearly")} className={`flex-1 px-3 py-1.5 sm:py-1 text-xs font-medium rounded-md transition-colors ${timeframe === "yearly" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Yearly</button>
                         </div>
                     )}
                 </CardHeader>
