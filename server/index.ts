@@ -73,10 +73,13 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       const results = Papa.parse(csvFile, { header: true, skipEmptyLines: true });
       data = results.data;
     } else if (fileName.endsWith('.xlsx')) {
-      const workbook = xlsx.readFile(filePath);
+      let workbook: any = xlsx.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      let worksheet: any = workbook.Sheets[sheetName];
       data = xlsx.utils.sheet_to_json(worksheet);
+      // Free massive AST objects from memory immediately
+      workbook = null;
+      worksheet = null;
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
     }
@@ -90,55 +93,49 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       // Optional: Clear existing data if needed, but usually we append
       // await client.query('DELETE FROM sales_data');
 
-      for (const row of data) {
-        // Mapping (based on sampleData.ts logic - might need adjustment based on exact headers)
-        // Since we don't know the exact headers of the uploaded file, 
-        // we'll try to map common ones or use the index-based approach if generic.
-        // However, sheet_to_json uses headers. Let's look at sampleData.ts mapping again.
+      // Batch inserts to prevent Out of Memory (OOM) on large files
+      const CHUNK_SIZE = 500;
 
-        // Date parsing: DD-MM-YYYY -> YYYY-MM-DD or Excel Serial
-        const rawDate = row['BILL_DATE'] || row['Date'] || '';
-        let formattedDate = rawDate;
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        const chunk = data.slice(i, i + CHUNK_SIZE);
+        const queryValues: any[] = [];
+        const valuePlaceholders: string[] = [];
+        let paramIndex = 1;
 
-        const dateAsNumber = Number(rawDate);
-        if (!isNaN(dateAsNumber) && String(rawDate).trim() !== '') {
-          // Excel serial dates are days since Dec 30, 1899
-          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-          const dateObj = new Date(excelEpoch.getTime() + dateAsNumber * 86400000);
-          formattedDate = dateObj.toISOString().split('T')[0];
-        } else if (typeof rawDate === 'string' && rawDate.includes('-')) {
-          const parts = rawDate.split('-');
-          if (parts.length === 3) {
-            formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        for (const row of chunk) {
+          // Date parsing: DD-MM-YYYY -> YYYY-MM-DD or Excel Serial
+          const rawDate = row['BILL_DATE'] || row['Date'] || '';
+          let formattedDate = rawDate;
+
+          const dateAsNumber = Number(rawDate);
+          if (!isNaN(dateAsNumber) && String(rawDate).trim() !== '') {
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const dateObj = new Date(excelEpoch.getTime() + dateAsNumber * 86400000);
+            formattedDate = dateObj.toISOString().split('T')[0];
+          } else if (typeof rawDate === 'string' && rawDate.includes('-')) {
+            const parts = rawDate.split('-');
+            if (parts.length === 3) {
+              formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
           }
-        }
 
-        // Time parsing: HH:MM:SS or Excel Serial
-        const rawTime = row['BILL_TIME'] || '';
-        let formattedTime = rawTime || '00:00:00';
+          // Time parsing: HH:MM:SS or Excel Serial
+          const rawTime = row['BILL_TIME'] || '';
+          let formattedTime = rawTime || '00:00:00';
 
-        const timeAsNumber = Number(rawTime);
-        if (!isNaN(timeAsNumber) && String(rawTime).trim() !== '') {
-          // Time in Excel is the fractional part of the number (1.0 = 24 hours)
-          const timeOnly = timeAsNumber % 1;
-          const totalSeconds = Math.round(timeOnly * 24 * 60 * 60);
-          const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-          const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-          const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-          formattedTime = `${hours}:${minutes}:${seconds}`;
-        } else if (typeof rawTime === 'string' && !isNaN(Number(rawDate)) && String(rawDate).trim() !== '') {
-          // Catch edge cases where Date is numeric but Time isn't formatted properly
-          // Or just leave as string if it looks like HH:MM:SS
-          formattedTime = rawTime.slice(0, 8); // Safe truncation
-        }
+          const timeAsNumber = Number(rawTime);
+          if (!isNaN(timeAsNumber) && String(rawTime).trim() !== '') {
+            const timeOnly = timeAsNumber % 1;
+            const totalSeconds = Math.round(timeOnly * 24 * 60 * 60);
+            const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            formattedTime = `${hours}:${minutes}:${seconds}`;
+          } else if (typeof rawTime === 'string' && !isNaN(Number(rawDate)) && String(rawDate).trim() !== '') {
+            formattedTime = rawTime.slice(0, 8);
+          }
 
-        await client.query(
-          `INSERT INTO sales_data (
-            item_code, bill_date, bill_time, item_desc, section_type, department, 
-            cat2, cat3, cat4, cat5, cat6, sm_code, sm_name, bill_quantity, net_amount, site,
-            cp, basic_amount, tax_amt
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-          [
+          queryValues.push(
             row['ITEM CODE'] || row['Item Code'] || row['ITEM_CODE'] || 'UNKNOWN',
             formattedDate || null,
             formattedTime,
@@ -158,8 +155,24 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             Number(row['CP'] || row['cp']) || 0,
             Number(row['BASIC_AMOUNT'] || row['Basic Amount'] || row['basic_amount']) || 0,
             Number(row['TAX AMT'] || row['Tax Amt'] || row['tax_amt']) || 0
-          ]
-        );
+          );
+
+          const rowPlaceholders = [];
+          for (let p = 0; p < 19; p++) {
+            rowPlaceholders.push(`$${paramIndex++}`);
+          }
+          valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
+        }
+
+        const queryStr = `
+          INSERT INTO sales_data (
+            item_code, bill_date, bill_time, item_desc, section_type, department, 
+            cat2, cat3, cat4, cat5, cat6, sm_code, sm_name, bill_quantity, net_amount, site,
+            cp, basic_amount, tax_amt
+          ) VALUES ${valuePlaceholders.join(', ')}
+        `;
+
+        await client.query(queryStr, queryValues);
       }
 
       await client.query('COMMIT');
