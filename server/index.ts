@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import * as xlsx from 'xlsx';
+import xlsx from 'xlsx';
 import Papa from 'papaparse';
 import pool from './db.js'; // Note: using .js extension for ES modules if needed, or depends on tsconfig
 import fs from 'fs';
@@ -529,3 +529,4 @@ try {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
