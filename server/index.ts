@@ -96,14 +96,40 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         // we'll try to map common ones or use the index-based approach if generic.
         // However, sheet_to_json uses headers. Let's look at sampleData.ts mapping again.
 
-        // Date parsing: DD-MM-YYYY -> YYYY-MM-DD
+        // Date parsing: DD-MM-YYYY -> YYYY-MM-DD or Excel Serial
         const rawDate = row['BILL_DATE'] || row['Date'] || '';
         let formattedDate = rawDate;
-        if (typeof rawDate === 'string' && rawDate.includes('-')) {
+
+        const dateAsNumber = Number(rawDate);
+        if (!isNaN(dateAsNumber) && String(rawDate).trim() !== '') {
+          // Excel serial dates are days since Dec 30, 1899
+          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+          const dateObj = new Date(excelEpoch.getTime() + dateAsNumber * 86400000);
+          formattedDate = dateObj.toISOString().split('T')[0];
+        } else if (typeof rawDate === 'string' && rawDate.includes('-')) {
           const parts = rawDate.split('-');
           if (parts.length === 3) {
             formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
           }
+        }
+
+        // Time parsing: HH:MM:SS or Excel Serial
+        const rawTime = row['BILL_TIME'] || '';
+        let formattedTime = rawTime || '00:00:00';
+
+        const timeAsNumber = Number(rawTime);
+        if (!isNaN(timeAsNumber) && String(rawTime).trim() !== '') {
+          // Time in Excel is the fractional part of the number (1.0 = 24 hours)
+          const timeOnly = timeAsNumber % 1;
+          const totalSeconds = Math.round(timeOnly * 24 * 60 * 60);
+          const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+          const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+          const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+          formattedTime = `${hours}:${minutes}:${seconds}`;
+        } else if (typeof rawTime === 'string' && !isNaN(Number(rawDate)) && String(rawDate).trim() !== '') {
+          // Catch edge cases where Date is numeric but Time isn't formatted properly
+          // Or just leave as string if it looks like HH:MM:SS
+          formattedTime = rawTime.slice(0, 8); // Safe truncation
         }
 
         await client.query(
@@ -115,7 +141,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
           [
             row['ITEM CODE'] || row['Item Code'] || row['ITEM_CODE'] || 'UNKNOWN',
             formattedDate || null,
-            row['BILL_TIME'] || '00:00:00',
+            formattedTime,
             row['VENDOR'] || row['DESC'] || row['Description'] || '',
             row['SECTION TYPE'] || row['SECTION'] || row['Category'] || 'Other',
             row['DEPARTMENT'] || row['DEPORTMENT'] || row['Department'] || 'General',
@@ -529,4 +555,3 @@ try {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
