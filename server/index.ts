@@ -317,7 +317,7 @@ app.get('/api/analytics', async (req, res) => {
       WHERE ${whereClause}
       GROUP BY bill_date
       ORDER BY bill_date ASC
-      LIMIT 30
+      LIMIT 31
     `;
     const dailyResult = await pool.query(dailyQuery, params);
 
@@ -568,4 +568,5 @@ try {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
 
