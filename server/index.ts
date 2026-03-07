@@ -316,7 +316,7 @@ app.get('/api/analytics', async (req, res) => {
       FROM sales_data
       WHERE ${whereClause}
       GROUP BY bill_date
-      ORDER BY bill_date DESC
+      ORDER BY bill_date ASC
       LIMIT 30
     `;
     const dailyResult = await pool.query(dailyQuery, params);
@@ -330,7 +330,7 @@ app.get('/api/analytics', async (req, res) => {
       FROM sales_data
       WHERE ${whereClause}
       GROUP BY month
-      ORDER BY month DESC
+      ORDER BY month ASC
       LIMIT 12
     `;
     const monthlyResult = await pool.query(monthlyQuery, params);
@@ -344,7 +344,7 @@ app.get('/api/analytics', async (req, res) => {
       FROM sales_data
       WHERE ${whereClause}
       GROUP BY year
-      ORDER BY year DESC
+      ORDER BY year ASC
       LIMIT 5
     `;
     const yearlyResult = await pool.query(yearlyQuery, params);
@@ -568,3 +568,4 @@ try {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
