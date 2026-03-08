@@ -34,10 +34,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const [filters, setFilters] = useState<FilterState>({
         dateRange: { from: undefined, to: undefined },
-        category: "",
-        department: "",
+        category: [],
+        department: [],
         search: "",
-        site: "all",
+        site: [],
     });
 
     const refreshData = useCallback(async (sortBy: string = 'revenue') => {
@@ -45,9 +45,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         try {
             // Build query string from filters
             const queryParts = [`sortBy=${encodeURIComponent(sortBy)}`];
-            if (filters.category && filters.category !== 'all') queryParts.push(`category=${encodeURIComponent(filters.category)}`);
-            if (filters.department && filters.department !== 'all') queryParts.push(`department=${encodeURIComponent(filters.department)}`);
-            if (filters.site && filters.site !== 'all') queryParts.push(`site=${encodeURIComponent(filters.site)}`);
+            if (filters.category && filters.category.length > 0) queryParts.push(`category=${encodeURIComponent(filters.category.join(','))}`);
+            if (filters.department && filters.department.length > 0) queryParts.push(`department=${encodeURIComponent(filters.department.join(','))}`);
+            if (filters.site && filters.site.length > 0 && !filters.site.includes('all')) queryParts.push(`site=${encodeURIComponent(filters.site.join(','))}`);
             if (filters.search) queryParts.push(`search=${encodeURIComponent(filters.search)}`);
             if (filters.dateRange.from) queryParts.push(`from=${filters.dateRange.from.toISOString().split('T')[0]}`);
             if (filters.dateRange.to) queryParts.push(`to=${filters.dateRange.to.toISOString().split('T')[0]}`);
