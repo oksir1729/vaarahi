@@ -201,13 +201,19 @@ app.get('/api/analytics', async (req, res) => {
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (category && category !== 'all') {
-      conditions.push(`TRIM(LOWER(section_type)) = $${paramIndex++}`);
-      params.push((category as string).toLowerCase().trim());
+    if (category && typeof category === 'string' && category !== 'all') {
+      const categories = category.split(',').map(c => c.toLowerCase().trim());
+      if (categories.length > 0) {
+        conditions.push(`TRIM(LOWER(section_type)) = ANY($${paramIndex++})`);
+        params.push(categories);
+      }
     }
-    if (department && department !== 'all') {
-      conditions.push(`TRIM(LOWER(department)) = $${paramIndex++}`);
-      params.push((department as string).toLowerCase().trim());
+    if (department && typeof department === 'string' && department !== 'all') {
+      const departments = department.split(',').map(d => d.toLowerCase().trim());
+      if (departments.length > 0) {
+        conditions.push(`TRIM(LOWER(department)) = ANY($${paramIndex++})`);
+        params.push(departments);
+      }
     }
     if (search) {
       conditions.push(`(LOWER(department) LIKE $${paramIndex} OR LOWER(item_code) LIKE $${paramIndex})`);
@@ -226,9 +232,12 @@ app.get('/api/analytics', async (req, res) => {
       conditions.push(`bill_date <= $${paramIndex++}`);
       params.push(to);
     }
-    if (site && site !== 'all') {
-      conditions.push(`TRIM(LOWER(site)) = $${paramIndex++}`);
-      params.push((site as string).toLowerCase().trim());
+    if (site && typeof site === 'string' && site !== 'all') {
+      const sites = site.split(',').map(s => s.toLowerCase().trim());
+      if (sites.length > 0) {
+        conditions.push(`TRIM(LOWER(site)) = ANY($${paramIndex++})`);
+        params.push(sites);
+      }
     }
 
     const whereClause = conditions.join(' AND ');
@@ -308,44 +317,52 @@ app.get('/api/analytics', async (req, res) => {
 
     // 3. Daily Sales
     const dailyQuery = `
-      SELECT 
-        bill_date as date,
-        SUM(net_amount) as revenue,
-        SUM(bill_quantity) as quantity,
-        COUNT(DISTINCT CONCAT(bill_date, bill_time)) as bills
-      FROM sales_data
-      WHERE ${whereClause}
-      GROUP BY bill_date
-      ORDER BY bill_date ASC
-      LIMIT 31
+      WITH recent_days AS (
+        SELECT 
+          bill_date as date,
+          SUM(net_amount) as revenue,
+          SUM(bill_quantity) as quantity,
+          COUNT(DISTINCT CONCAT(bill_date, bill_time)) as bills
+        FROM sales_data
+        WHERE ${whereClause}
+        GROUP BY bill_date
+        ORDER BY bill_date DESC
+        LIMIT 31
+      )
+      SELECT * FROM recent_days ORDER BY date ASC
     `;
     const dailyResult = await pool.query(dailyQuery, params);
 
     // 4. Monthly Sales
     const monthlyQuery = `
-      SELECT 
-        TO_CHAR(bill_date, 'YYYY-MM') as month,
-        SUM(net_amount) as revenue,
-        SUM(bill_quantity) as quantity
-      FROM sales_data
-      WHERE ${whereClause}
-      GROUP BY month
-      ORDER BY month ASC
-      LIMIT 12
+      WITH recent_months AS (
+        SELECT 
+          TO_CHAR(bill_date, 'YYYY-MM') as month,
+          SUM(net_amount) as revenue,
+          SUM(bill_quantity) as quantity
+        FROM sales_data
+        WHERE ${whereClause}
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 12
+      )
+      SELECT * FROM recent_months ORDER BY month ASC
     `;
     const monthlyResult = await pool.query(monthlyQuery, params);
 
-    // 4b. Yearly Sales
     const yearlyQuery = `
-      SELECT 
-        TO_CHAR(bill_date, 'YYYY') as year,
-        SUM(net_amount) as revenue,
-        SUM(bill_quantity) as quantity
-      FROM sales_data
-      WHERE ${whereClause}
-      GROUP BY year
-      ORDER BY year ASC
-      LIMIT 5
+      WITH recent_years AS (
+        SELECT 
+          TO_CHAR(bill_date, 'YYYY') as year,
+          SUM(net_amount) as revenue,
+          SUM(bill_quantity) as quantity
+        FROM sales_data
+        WHERE ${whereClause}
+        GROUP BY year
+        ORDER BY year DESC
+        LIMIT 5
+      )
+      SELECT * FROM recent_years ORDER BY year ASC
     `;
     const yearlyResult = await pool.query(yearlyQuery, params);
 
@@ -466,13 +483,19 @@ app.get('/api/salesmen_table', async (req, res) => {
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (category && category !== 'all') {
-      conditions.push(`TRIM(LOWER(section_type)) = $${paramIndex++}`);
-      params.push((category as string).toLowerCase().trim());
+    if (category && typeof category === 'string' && category !== 'all') {
+      const categories = category.split(',').map(c => c.toLowerCase().trim());
+      if (categories.length > 0) {
+        conditions.push(`TRIM(LOWER(section_type)) = ANY($${paramIndex++})`);
+        params.push(categories);
+      }
     }
-    if (department && department !== 'all') {
-      conditions.push(`TRIM(LOWER(department)) = $${paramIndex++}`);
-      params.push((department as string).toLowerCase().trim());
+    if (department && typeof department === 'string' && department !== 'all') {
+      const departments = department.split(',').map(d => d.toLowerCase().trim());
+      if (departments.length > 0) {
+        conditions.push(`TRIM(LOWER(department)) = ANY($${paramIndex++})`);
+        params.push(departments);
+      }
     }
     if (from) {
       conditions.push(`bill_date >= $${paramIndex++}`);
@@ -482,11 +505,13 @@ app.get('/api/salesmen_table', async (req, res) => {
       conditions.push(`bill_date <= $${paramIndex++}`);
       params.push(to);
     }
-    if (site && site !== 'all') {
-      conditions.push(`TRIM(LOWER(site)) = $${paramIndex++}`);
-      params.push((site as string).toLowerCase().trim());
+    if (site && typeof site === 'string' && site !== 'all') {
+      const sites = site.split(',').map(s => s.toLowerCase().trim());
+      if (sites.length > 0) {
+        conditions.push(`TRIM(LOWER(site)) = ANY($${paramIndex++})`);
+        params.push(sites);
+      }
     }
-
     // Custom search for this table only (sm_name or sm_code)
     if (search) {
       conditions.push(`(LOWER(sm_name) LIKE $${paramIndex} OR LOWER(sm_code) LIKE $${paramIndex})`);
@@ -523,6 +548,45 @@ app.get('/api/salesmen_table', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch salesmen table data' });
+  }
+});
+
+app.get('/api/search-suggestions', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+      return res.json([]);
+    }
+
+    const searchTerm = `%${q.trim().toLowerCase()}%`;
+
+    const query = `
+      SELECT suggestion, type FROM (
+        SELECT DISTINCT TRIM(section_type) as suggestion, 'category' as type 
+        FROM sales_data 
+        WHERE LOWER(section_type) LIKE $1 AND section_type IS NOT NULL
+
+        UNION 
+
+        SELECT DISTINCT TRIM(department) as suggestion, 'department' as type 
+        FROM sales_data 
+        WHERE LOWER(department) LIKE $1 AND department IS NOT NULL
+
+        UNION 
+
+        SELECT DISTINCT TRIM(item_code) as suggestion, 'item' as type 
+        FROM sales_data 
+        WHERE LOWER(item_code) LIKE $1 AND item_code IS NOT NULL
+      ) combined_suggestions
+      ORDER BY suggestion ASC
+      LIMIT 20
+    `;
+
+    const { rows } = await pool.query(query, [searchTerm]);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching search suggestions:', err);
+    res.status(500).json({ error: 'Failed to fetch suggestions' });
   }
 });
 
