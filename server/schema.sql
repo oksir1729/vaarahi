@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS sales_data CASCADE;
+
 CREATE TABLE IF NOT EXISTS sales_data (
     id SERIAL PRIMARY KEY,
     item_code VARCHAR(100),
