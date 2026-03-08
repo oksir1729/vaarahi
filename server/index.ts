@@ -477,7 +477,11 @@ app.get('/api/analytics', async (req, res) => {
 
 app.get('/api/salesmen_table', async (req, res) => {
   try {
-    const { category, department, search, from, to, site, sortBy, sortOrder } = req.query;
+    const { category, department, search, from, to, site, sortBy, sortOrder, page = '1', limit = '15' } = req.query;
+
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 15;
+    const offsetNum = (pageNum - 1) * limitNum;
 
     const conditions: string[] = ['1=1'];
     const params: any[] = [];
@@ -530,20 +534,38 @@ app.get('/api/salesmen_table', async (req, res) => {
         sm_code as "smCode",
         sm_name as name,
         SUM(bill_quantity) as "totalQuantity",
-        SUM(net_amount) as "totalRevenue"
+        SUM(net_amount) as "totalRevenue",
+        COUNT(*) OVER() AS full_count
       FROM sales_data
       WHERE ${whereClause} AND sm_code IS NOT NULL AND sm_code != 'UNKNOWN'
       GROUP BY sm_code, sm_name
       ORDER BY ${orderField} ${orderDirection}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
+
+    params.push(limitNum, offsetNum);
 
     const result = await pool.query(salesmenQuery, params);
 
-    res.json(result.rows.map(r => ({
-      ...r,
-      totalQuantity: Number(r.totalQuantity),
-      totalRevenue: Number(r.totalRevenue)
-    })));
+    const total = parseInt(result.rows[0]?.full_count || '0', 10);
+    const data = result.rows.map(r => {
+      const { full_count, ...rest } = r;
+      return {
+        ...rest,
+        totalQuantity: Number(rest.totalQuantity),
+        totalRevenue: Number(rest.totalRevenue)
+      };
+    });
+
+    res.json({
+      data,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
 
   } catch (err) {
     console.error(err);
