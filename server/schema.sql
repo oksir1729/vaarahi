@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS sales_data CASCADE;
 
 CREATE TABLE IF NOT EXISTS sales_data (
     id SERIAL PRIMARY KEY,
@@ -30,3 +29,4 @@ CREATE INDEX IF NOT EXISTS idx_section_type ON sales_data (section_type);
 
 
 CREATE INDEX IF NOT EXISTS idx_department ON sales_data (department);
+
