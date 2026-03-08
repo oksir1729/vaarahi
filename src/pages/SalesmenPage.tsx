@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useData } from "@/hooks/useData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricToggle } from "@/components/MetricToggle";
 import { formatCurrency, formatNumber } from "@/lib/analytics";
-import { Loader2, Search, ArrowUpDown } from "lucide-react";
+import { Loader2, Search, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell, LineChart, Line } from "recharts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,14 @@ export default function SalesmenPage() {
 
     const [tableData, setTableData] = useState<any[]>([]);
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const targetRef = useRef<HTMLDivElement>(null);
+
+    // Reset pagination when any filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [filters, searchQuery, sortOrder, metric]);
 
     useEffect(() => {
         if (!selectedSmCode) {
@@ -36,10 +44,10 @@ export default function SalesmenPage() {
             setIsSmLoading(true);
             try {
                 const queryParts = [];
-                if (filters.category && filters.category !== 'all') queryParts.push(`category=${encodeURIComponent(filters.category)}`);
-                if (filters.department && filters.department !== 'all') queryParts.push(`department=${encodeURIComponent(filters.department)}`);
+                if (filters.category && filters.category.length > 0) queryParts.push(`category=${encodeURIComponent(filters.category.join(','))}`);
+                if (filters.department && filters.department.length > 0) queryParts.push(`department=${encodeURIComponent(filters.department.join(','))}`);
                 if (filters.search) queryParts.push(`search=${encodeURIComponent(filters.search)}`);
-                if (filters.site && filters.site !== 'all') queryParts.push(`site=${encodeURIComponent(filters.site)}`);
+                if (filters.site && filters.site.length > 0 && !filters.site.includes('all')) queryParts.push(`site=${encodeURIComponent(filters.site.join(','))}`);
                 if (filters.dateRange.from) queryParts.push(`from=${filters.dateRange.from.toISOString().split('T')[0]}`);
                 if (filters.dateRange.to) queryParts.push(`to=${filters.dateRange.to.toISOString().split('T')[0]}`);
                 queryParts.push(`salesman=${encodeURIComponent(selectedSmCode)}`);
@@ -73,21 +81,23 @@ export default function SalesmenPage() {
             setIsTableLoading(true);
             try {
                 const queryParts = [];
-                if (filters.category && filters.category !== 'all') queryParts.push(`category=${encodeURIComponent(filters.category)}`);
-                if (filters.department && filters.department !== 'all') queryParts.push(`department=${encodeURIComponent(filters.department)}`);
+                if (filters.category && filters.category.length > 0) queryParts.push(`category=${encodeURIComponent(filters.category.join(','))}`);
+                if (filters.department && filters.department.length > 0) queryParts.push(`department=${encodeURIComponent(filters.department.join(','))}`);
                 if (searchQuery) queryParts.push(`search=${encodeURIComponent(searchQuery)}`);
-                if (filters.site && filters.site !== 'all') queryParts.push(`site=${encodeURIComponent(filters.site)}`);
+                if (filters.site && filters.site.length > 0 && !filters.site.includes('all')) queryParts.push(`site=${encodeURIComponent(filters.site.join(','))}`);
                 if (filters.dateRange.from) queryParts.push(`from=${filters.dateRange.from.toISOString().split('T')[0]}`);
                 if (filters.dateRange.to) queryParts.push(`to=${filters.dateRange.to.toISOString().split('T')[0]}`);
                 queryParts.push(`sortBy=${encodeURIComponent(metric)}`);
                 queryParts.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
+                queryParts.push(`page=${page}&limit=15`);
 
                 const queryStr = queryParts.join('&');
                 const res = await fetch(`/api/salesmen_table?${queryStr}`);
 
                 if (res.ok) {
                     const data = await res.json();
-                    setTableData(data);
+                    setTableData(data.data || []);
+                    setTotalPages(data.pagination?.totalPages || 1);
                 }
             } catch (err) {
                 console.error("Failed to fetch salesmen table", err);
@@ -99,7 +109,7 @@ export default function SalesmenPage() {
         // Use a small debounce for search query to avoid spamming the backend
         const timeoutId = setTimeout(() => fetchTable(), 300);
         return () => clearTimeout(timeoutId);
-    }, [filters, searchQuery, sortOrder, metric]);
+    }, [filters, searchQuery, sortOrder, metric, page]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -164,7 +174,12 @@ export default function SalesmenPage() {
                                     <TableRow
                                         key={sm.smCode}
                                         className={`hover:bg-muted/50 transition-colors cursor-pointer ${selectedSmCode === sm.smCode ? 'bg-muted border-l-4 border-l-primary' : ''}`}
-                                        onClick={() => setSelectedSmCode(sm.smCode)}
+                                        onClick={() => {
+                                            setSelectedSmCode(sm.smCode);
+                                            setTimeout(() => {
+                                                targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }, 50);
+                                        }}
                                     >
                                         <TableCell className="font-medium text-muted-foreground">{sm.smCode}</TableCell>
                                         <TableCell className="font-semibold">{sm.name}</TableCell>
@@ -183,12 +198,43 @@ export default function SalesmenPage() {
                                 )}
                             </TableBody>
                         </Table>
+
+                        {/* Pagination Controls */}
+                        {!isTableLoading && tableData.length > 0 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t bg-secondary/20">
+                                <div className="text-sm font-medium text-muted-foreground">
+                                    Page {page} of {totalPages}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-2 lg:px-3 gap-1"
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page <= 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        <span className="hidden sm:inline-block">Previous</span>
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-2 lg:px-3 gap-1"
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page >= totalPages}
+                                    >
+                                        <span className="hidden sm:inline-block">Next</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
 
             {/* Performance Time Series Graph */}
-            <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm relative overflow-hidden">
+            <Card ref={targetRef} className="border-0 shadow-sm bg-card/50 backdrop-blur-sm relative overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <CardTitle>Historical Performance</CardTitle>
