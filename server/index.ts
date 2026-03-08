@@ -3,7 +3,6 @@ import cors from 'cors';
 import multer from 'multer';
 import xlsx from 'xlsx';
 import Papa from 'papaparse';
-import NodeCache from 'node-cache';
 import pool from './db.js'; // Note: using .js extension for ES modules if needed, or depends on tsconfig
 import fs from 'fs';
 import path from 'path';
@@ -25,7 +24,6 @@ app.use((req, _res, next) => {
 });
 
 const upload = multer({ dest: 'uploads/' });
-const cache = new NodeCache({ stdTTL: 300 }); // 5 minute standard TTL
 
 // Basic route to check server status
 app.get('/api/health', (req, res) => {
@@ -46,22 +44,12 @@ app.get('/api/sales', async (req, res) => {
 // Route to fetch unique sections and departments
 app.get('/api/filters', async (req, res) => {
   try {
-    const cacheKey = 'filters';
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
-    }
-
     const sections = await pool.query('SELECT DISTINCT section_type FROM sales_data WHERE section_type IS NOT NULL ORDER BY section_type');
     const departments = await pool.query('SELECT DISTINCT department FROM sales_data WHERE department IS NOT NULL ORDER BY department');
-
-    const responseData = {
+    res.json({
       sections: sections.rows.map(r => r.section_type),
       departments: departments.rows.map(r => r.department)
-    };
-
-    cache.set(cacheKey, responseData);
-    res.json(responseData);
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch filters' });
@@ -188,7 +176,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       }
 
       await client.query('COMMIT');
-      cache.flushAll(); // Wipe all cached queries so users instantly see new data
       res.json({ message: `Successfully uploaded and saved ${data.length} records.` });
     } catch (err) {
       await client.query('ROLLBACK');
@@ -207,12 +194,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/analytics', async (req, res) => {
   try {
-    const cacheKey = `analytics_${JSON.stringify(req.query)}`;
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
-    }
-
     const { category, department, search, from, to, sortBy, salesman, site } = req.query;
 
     // Build dynamic WHERE clause
@@ -479,12 +460,6 @@ app.get('/api/analytics', async (req, res) => {
 
 app.get('/api/salesmen_table', async (req, res) => {
   try {
-    const cacheKey = `salesmen_table_${JSON.stringify(req.query)}`;
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
-    }
-
     const { category, department, search, from, to, site, sortBy, sortOrder } = req.query;
 
     const conditions: string[] = ['1=1'];
@@ -539,14 +514,11 @@ app.get('/api/salesmen_table', async (req, res) => {
 
     const result = await pool.query(salesmenQuery, params);
 
-    const responseData = result.rows.map(r => ({
+    res.json(result.rows.map(r => ({
       ...r,
       totalQuantity: Number(r.totalQuantity),
       totalRevenue: Number(r.totalRevenue)
-    }));
-
-    cache.set(cacheKey, responseData);
-    res.json(responseData);
+    })));
 
   } catch (err) {
     console.error(err);
