@@ -66,8 +66,8 @@ export interface CategorySales {
 
 export interface FilterState {
   dateRange: { from: Date | undefined; to: Date | undefined };
-  category: string;
-  department: string;
+  category: string[];
+  department: string[];
   search: string;
-  site?: string;
+  site?: string[];
 }
