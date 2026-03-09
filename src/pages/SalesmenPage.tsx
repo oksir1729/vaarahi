@@ -67,14 +67,6 @@ export default function SalesmenPage() {
         fetchSm();
     }, [selectedSmCode, filters]);
 
-    if (isLoading || !analytics) {
-        return (
-            <div className="flex h-[400px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-3 text-lg font-medium">Loading salesman data...</span>
-            </div>
-        );
-    }
 
     useEffect(() => {
         async function fetchTable() {
@@ -316,3 +308,4 @@ export default function SalesmenPage() {
         </div >
     );
 }
+
