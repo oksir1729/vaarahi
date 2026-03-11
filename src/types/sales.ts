@@ -70,4 +70,5 @@ export interface FilterState {
   department: string[];
   search: string;
   site?: string[];
+  cpRange: { min?: number; max?: number };
 }
