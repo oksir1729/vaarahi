@@ -194,7 +194,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 app.get('/api/analytics', async (req, res) => {
   try {
-    const { category, department, search, from, to, sortBy, salesman, site } = req.query;
+    const { category, department, search, from, to, sortBy, salesman, site, minCp, maxCp } = req.query;
 
     // Build dynamic WHERE clause
     const conditions: string[] = ['1=1']; // Dummy condition to simplify adding ANDs
@@ -239,9 +239,17 @@ app.get('/api/analytics', async (req, res) => {
         params.push(sites);
       }
     }
+    if (minCp && !isNaN(Number(minCp))) {
+      conditions.push(`cp >= $${paramIndex++}`);
+      params.push(Number(minCp));
+    }
+    if (maxCp && !isNaN(Number(maxCp))) {
+      conditions.push(`cp <= $${paramIndex++}`);
+      params.push(Number(maxCp));
+    }
 
     const whereClause = conditions.join(' AND ');
-    console.log("Analytics Request:", { category, department, search, from, to, site });
+    console.log("Analytics Request:", { category, department, search, from, to, site, minCp, maxCp });
     console.log("WHERE Clause:", whereClause, "Params:", params);
 
     const now = new Date();
@@ -477,7 +485,7 @@ app.get('/api/analytics', async (req, res) => {
 
 app.get('/api/salesmen_table', async (req, res) => {
   try {
-    const { category, department, search, from, to, site, sortBy, sortOrder, page = '1', limit = '15' } = req.query;
+    const { category, department, search, from, to, site, sortBy, sortOrder, page = '1', limit = '15', minCp, maxCp } = req.query;
 
     const pageNum = parseInt(page as string, 10) || 1;
     const limitNum = parseInt(limit as string, 10) || 15;
@@ -521,6 +529,14 @@ app.get('/api/salesmen_table', async (req, res) => {
       conditions.push(`(LOWER(sm_name) LIKE $${paramIndex} OR LOWER(sm_code) LIKE $${paramIndex})`);
       params.push(`%${(search as string).toLowerCase()}%`);
       paramIndex++;
+    }
+    if (minCp && !isNaN(Number(minCp))) {
+      conditions.push(`cp >= $${paramIndex++}`);
+      params.push(Number(minCp));
+    }
+    if (maxCp && !isNaN(Number(maxCp))) {
+      conditions.push(`cp <= $${paramIndex++}`);
+      params.push(Number(maxCp));
     }
 
     const whereClause = conditions.join(' AND ');
