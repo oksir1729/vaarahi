@@ -15,6 +15,8 @@ export function DashboardFilters() {
   const sites = analytics?.sites || [];
 
   const [localSearch, setLocalSearch] = useState(filters.search || "");
+  const [localMinCp, setLocalMinCp] = useState(filters.cpRange?.min?.toString() || "");
+  const [localMaxCp, setLocalMaxCp] = useState(filters.cpRange?.max?.toString() || "");
   const [suggestions, setSuggestions] = useState<{ suggestion: string, type: string }[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -22,6 +24,11 @@ export function DashboardFilters() {
   useEffect(() => {
     setLocalSearch(filters.search || "");
   }, [filters.search]);
+
+  useEffect(() => {
+    setLocalMinCp(filters.cpRange?.min?.toString() || "");
+    setLocalMaxCp(filters.cpRange?.max?.toString() || "");
+  }, [filters.cpRange]);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -46,15 +53,31 @@ export function DashboardFilters() {
     return () => clearTimeout(timer);
   }, [localSearch, updateFilter]);
 
-  const hasFilters = filters.category?.length > 0 || filters.department?.length > 0 || filters.search || filters.dateRange.from || filters.site?.length > 0;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const min = localMinCp === "" ? undefined : Number(localMinCp);
+      const max = localMaxCp === "" ? undefined : Number(localMaxCp);
+
+      if (min !== filters.cpRange?.min || max !== filters.cpRange?.max) {
+        updateFilter("cpRange", { min, max });
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [localMinCp, localMaxCp, updateFilter, filters.cpRange]);
+
+  const hasFilters = filters.category?.length > 0 || filters.department?.length > 0 || filters.search || filters.dateRange.from || filters.site?.length > 0 || filters.cpRange?.min !== undefined || filters.cpRange?.max !== undefined;
 
   const clearAll = () => {
     updateFilter("site", []);
     updateFilter("category", []);
     updateFilter("department", []);
     setLocalSearch("");
+    setLocalMinCp("");
+    setLocalMaxCp("");
     updateFilter("search", "");
     updateFilter("dateRange", { from: undefined, to: undefined });
+    updateFilter("cpRange", { min: undefined, max: undefined });
   };
 
   const toggleArrayItem = (key: "category" | "department" | "site", item: string) => {
@@ -67,7 +90,7 @@ export function DashboardFilters() {
   };
 
   return (
-    <div className="flex flex-1 items-center gap-2 flex-wrap w-full md:w-auto">
+    <form className="flex flex-1 items-center gap-2 flex-wrap w-full md:w-auto" onSubmit={(e) => e.preventDefault()}>
       {/* Search */}
       <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
         <PopoverTrigger asChild>
@@ -117,7 +140,7 @@ export function DashboardFilters() {
       {/* Date range */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className={cn("h-9 text-sm gap-1.5 border-0 bg-secondary/50", filters.dateRange.from && "text-foreground")}>
+          <Button type="button" variant="outline" size="sm" className={cn("h-9 text-sm gap-1.5 border-0 bg-secondary/50", filters.dateRange.from && "text-foreground")}>
             <CalendarIcon className="h-3.5 w-3.5" />
             {filters.dateRange.from ? (
               filters.dateRange.to ? (
@@ -140,7 +163,7 @@ export function DashboardFilters() {
       {/* Site */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 w-[140px] flex-1 sm:flex-none justify-start px-3 text-sm font-normal border-0 bg-secondary/50 shrink-0">
+          <Button type="button" variant="outline" size="sm" className="h-9 w-[140px] flex-1 sm:flex-none justify-start px-3 text-sm font-normal border-0 bg-secondary/50 shrink-0">
             {filters.site?.length > 0 ? `Sites (${filters.site.length})` : "All Sites"}
           </Button>
         </DropdownMenuTrigger>
@@ -163,7 +186,7 @@ export function DashboardFilters() {
       {/* Category */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 w-[140px] flex-1 sm:flex-none justify-start px-3 text-sm font-normal border-0 bg-secondary/50 shrink-0">
+          <Button type="button" variant="outline" size="sm" className="h-9 w-[140px] flex-1 sm:flex-none justify-start px-3 text-sm font-normal border-0 bg-secondary/50 shrink-0">
             {filters.category?.length > 0 ? `Categories (${filters.category.length})` : "All Categories"}
           </Button>
         </DropdownMenuTrigger>
@@ -186,7 +209,7 @@ export function DashboardFilters() {
       {/* Department */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 w-[140px] flex-1 sm:flex-none justify-start px-3 text-sm font-normal border-0 bg-secondary/50 shrink-0">
+          <Button type="button" variant="outline" size="sm" className="h-9 w-[140px] flex-1 sm:flex-none justify-start px-3 text-sm font-normal border-0 bg-secondary/50 shrink-0">
             {filters.department?.length > 0 ? `Departments (${filters.department.length})` : "All Departments"}
           </Button>
         </DropdownMenuTrigger>
@@ -206,11 +229,31 @@ export function DashboardFilters() {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* CP Range */}
+      <div className="flex items-center gap-1 sm:gap-2 text-sm bg-secondary/50 rounded-md shrink-0 h-9 p-1">
+        <span className="text-muted-foreground text-xs px-2 hidden sm:inline-block">CP</span>
+        <Input
+          type="number"
+          placeholder="Min"
+          value={localMinCp}
+          onChange={(e) => setLocalMinCp(e.target.value)}
+          className="w-16 sm:w-20 h-7 text-xs border-0 bg-transparent px-2 placeholder:text-muted-foreground/70 focus-visible:ring-0 focus-visible:border-primary/50"
+        />
+        <span className="text-muted-foreground">-</span>
+        <Input
+          type="number"
+          placeholder="Max"
+          value={localMaxCp}
+          onChange={(e) => setLocalMaxCp(e.target.value)}
+          className="w-16 sm:w-20 h-7 text-xs border-0 bg-transparent px-2 placeholder:text-muted-foreground/70 focus-visible:ring-0 focus-visible:border-primary/50"
+        />
+      </div>
+
       {hasFilters && (
-        <Button variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground" onClick={clearAll}>
+        <Button variant="ghost" size="sm" type="button" className="h-9 text-xs text-muted-foreground" onClick={clearAll}>
           <X className="h-3 w-3 mr-1" /> Clear
         </Button>
       )}
-    </div>
+    </form>
   );
 }
