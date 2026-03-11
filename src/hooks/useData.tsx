@@ -38,6 +38,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         department: [],
         search: "",
         site: [],
+        cpRange: {},
     });
 
     const refreshData = useCallback(async (sortBy: string = 'revenue') => {
@@ -51,6 +52,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             if (filters.search) queryParts.push(`search=${encodeURIComponent(filters.search)}`);
             if (filters.dateRange.from) queryParts.push(`from=${filters.dateRange.from.toISOString().split('T')[0]}`);
             if (filters.dateRange.to) queryParts.push(`to=${filters.dateRange.to.toISOString().split('T')[0]}`);
+            if (filters.cpRange.min !== undefined) queryParts.push(`minCp=${filters.cpRange.min}`);
+            if (filters.cpRange.max !== undefined) queryParts.push(`maxCp=${filters.cpRange.max}`);
             const queryStr = queryParts.join('&');
 
             const [filtersRes, analyticsRes] = await Promise.all([
@@ -76,7 +79,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         refreshData('revenue');
-    }, [filters.category, filters.department, filters.site, filters.search, filters.dateRange.from, filters.dateRange.to]); // Removed refreshData to prevent loop if it changes, though it's wrapped in useCallback
+    }, [filters.category, filters.department, filters.site, filters.search, filters.dateRange.from, filters.dateRange.to, filters.cpRange.min, filters.cpRange.max]);
 
     const updateFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));
